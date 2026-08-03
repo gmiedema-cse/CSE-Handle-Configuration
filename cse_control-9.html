@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CSE Handle Control</title>
+<style>
+  :root {
+    --bg: #f7faf3;
+    --card: #ffffff;
+    --line: #e3e9db;
+    --text: #23291f;
+    --dim: #74806c;
+    --accent: #5cb70b;
+    --accent-dark: #3d8b06;
+    --accent-tint: #eef9e3;
+    --warn: #c98a12;
+    --err: #d64b3f;
+    --err-tint: #fdecea;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    margin: 0;
+    padding: 32px 24px;
+    font-size: 14px;
+    line-height: 1.55;
+    max-width: 720px;
+  }
+  h1 {
+    font-size: 22px;
+    color: var(--text);
+    margin: 0 0 4px 0;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  h2 {
+    font-size: 14px;
+    color: var(--text);
+    margin: 0 0 14px 0;
+    font-weight: 700;
+  }
+  h2 .step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--accent-tint);
+    color: var(--accent-dark);
+    font-size: 11px;
+    font-weight: 700;
+    margin-right: 8px;
+  }
+  .sub { color: var(--dim); font-size: 13px; margin-bottom: 24px; }
+  section {
+    border: 1px solid var(--line);
+    background: var(--card);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 2px rgba(35, 41, 31, 0.04);
+  }
+  section.disabled { opacity: 0.45; pointer-events: none; }
+  .row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .row:last-child { margin-bottom: 0; }
+  label {
+    color: var(--dim);
+    font-size: 13px;
+    min-width: 90px;
+  }
+  input[type=text], input[type=password], select {
+    background: #fbfcf9;
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    padding: 9px 11px;
+    border-radius: 8px;
+    flex: 1;
+    min-width: 120px;
+  }
+  input[type=text]:focus, input[type=password]:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-tint);
+  }
+  input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--accent); }
+  button {
+    background: var(--accent);
+    color: #ffffff;
+    border: none;
+    padding: 10px 18px;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s ease;
+  }
+  button:hover { background: var(--accent-dark); }
+  button:disabled { opacity: 0.4; cursor: default; }
+  button.ghost {
+    background: transparent;
+    color: var(--dim);
+    border: 1px solid var(--line);
+  }
+  button.ghost:hover { color: var(--text); border-color: var(--dim); background: transparent; }
+  button.danger { background: var(--err); }
+  button.danger:hover { background: #b83a30; }
+  .status { font-size: 13px; color: var(--dim); margin-left: 4px; }
+  .status.on { color: var(--accent-dark); font-weight: 600; }
+  .status.err { color: var(--err); font-weight: 600; }
+  .log {
+    background: #fbfcf9;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    max-height: 220px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: var(--dim);
+  }
+  .log .l-ok { color: var(--accent-dark); }
+  .log .l-err { color: var(--err); }
+  .log .l-info { color: var(--dim); }
+  .top-bar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+</style>
+</head>
+<body>
+
+<h1>CSE Handle Control</h1>
+<div class="sub">Bluetooth configuration only — WiFi, authentication, rename, orientation, reboot. No media/image management.</div>
+
+<div class="top-bar">
+  <button id="connectBtn">Connect device</button>
+  <button id="disconnectBtn" class="ghost" disabled>Disconnect</button>
+  <span id="connStatus" class="status">not connected</span>
+</div>
+
+<section id="authSection">
+  <h2><span class="step-num">1</span>Authenticate</h2>
+  <div class="row">
+    <label>Handle password</label>
+    <input type="password" id="authPassword" placeholder="e.g. CSE@config-pswd!">
+    <button id="authBtn" disabled>Authenticate</button>
+  </div>
+  <div class="row"><span id="authStatus" class="status">not authenticated</span></div>
+</section>
+
+<section id="controlSection" class="disabled">
+  <h2><span class="step-num">2</span>Status</h2>
+  <div class="row">
+    <button id="statusBtn">Get current IP / status</button>
+    <button id="loadSettingsBtn" class="ghost">Load current settings into form below</button>
+  </div>
+  <div class="row"><span id="statusResult" class="status"></span></div>
+  <div class="row"><span id="loadSettingsResult" class="status"></span></div>
+</section>
+
+<section id="wifiSection" class="disabled">
+  <h2><span class="step-num">3</span>WiFi Configuration</h2>
+  <div class="row">
+    <label>SSID</label>
+    <input type="text" id="wifiSsid" placeholder="network name">
+  </div>
+  <div class="row">
+    <label>Password</label>
+    <input type="text" id="wifiPassword" placeholder="network password">
+  </div>
+  <div class="row">
+    <label>Security</label>
+    <select id="wifiSecurity">
+      <option value="0">Open</option>
+      <option value="1" selected>WPA/WPA2</option>
+      <option value="2">WEP</option>
+    </select>
+  </div>
+  <div class="row">
+    <label>DHCP</label>
+    <input type="checkbox" id="wifiDhcp" checked>
+    <span class="status">uncheck to set static IP fields below</span>
+  </div>
+  <div class="row">
+    <label>IP</label>
+    <input type="text" id="wifiIp" placeholder="192.168.1.50">
+    <label>Mask</label>
+    <input type="text" id="wifiMask" placeholder="255.255.255.0">
+  </div>
+  <div class="row">
+    <label>Gateway</label>
+    <input type="text" id="wifiGw" placeholder="192.168.1.1">
+    <label>DNS</label>
+    <input type="text" id="wifiDns" placeholder="8.8.8.8">
+  </div>
+  <div class="row">
+    <label>Orientation</label>
+    <select id="deviceOrientation">
+      <option value="l">Left Hand</option>
+      <option value="r">Right Hand</option>
+    </select>
+    <span class="status">only applied if "also apply orientation" is checked below</span>
+  </div>
+  <div class="row">
+    <input type="checkbox" id="applyOrientationCheck">
+    <span class="status">also apply orientation with this WiFi submission (matches how the official app bundles it — orientation is never sent on its own)</span>
+  </div>
+  <div class="row">
+    <button id="wifiApplyBtn">Apply WiFi settings</button>
+  </div>
+</section>
+
+<section id="batchSection">
+  <h2>Batch Rollout — apply the WiFi settings above to multiple handles</h2>
+  <div class="row">
+    <input type="checkbox" id="batchOrientation">
+    <span class="status">also apply the orientation selected in section 4 to each handle</span>
+  </div>
+  <div class="row">
+    <button id="batchNextBtn">Configure next handle…</button>
+    <span id="batchStatus" class="status"></span>
+  </div>
+  <div class="row" style="margin-top:10px;">
+    <table style="width:100%; border-collapse: collapse; font-size: 12px;">
+      <thead><tr>
+        <th style="text-align:left; color: var(--dim); font-size:11px; padding:6px 8px; border-bottom:1px solid var(--line);">Handle</th>
+        <th style="text-align:left; color: var(--dim); font-size:11px; padding:6px 8px; border-bottom:1px solid var(--line);">Result</th>
+        <th style="text-align:left; color: var(--dim); font-size:11px; padding:6px 8px; border-bottom:1px solid var(--line);">Time</th>
+      </tr></thead>
+      <tbody id="batchRows"></tbody>
+    </table>
+  </div>
+</section>
+
+<section id="deviceSection" class="disabled">
+  <h2><span class="step-num">4</span>Device</h2>
+  <div class="row">
+    <label>Name</label>
+    <input type="text" id="deviceName" placeholder="new display name">
+    <button id="renameBtn">Rename</button>
+  </div>
+  <div class="row">
+    <button id="rebootBtn" class="danger">Reboot handle</button>
+  </div>
+</section>
+
+<section id="passwordSection" class="disabled">
+  <h2><span class="step-num">5</span>Change Authentication Password</h2>
+  <div class="row">
+    <label>New password</label>
+    <input type="password" id="newPassword" placeholder="new handle password">
+  </div>
+  <div class="row">
+    <label>Confirm</label>
+    <input type="password" id="confirmPassword" placeholder="confirm new password">
+    <button id="changePasswordBtn">Change password</button>
+  </div>
+  <div class="row"><span id="changePasswordResult" class="status"></span></div>
+</section>
+
+<section>
+  <h2>Log</h2>
+  <div class="log" id="log"></div>
+</section>
+
+<script>
+// ---- UUIDs, reverse-engineered from the official CSE Configuration Tool App ----
+const ADV_SVR_UUID = 0xfefe;
+const AUTH_SVC_UUID = 'ab2d9501-ad44-4e59-8d34-7a6feaf836e1';
+const CTRL_SVC_UUID = '15d1fa92-0c1a-4718-b4dc-b1cf05dd4b93';
+const SETUP_SVC_UUID = 'b7a6b88a-4587-498f-af56-0bf2f05f9d9d';
+const STATE_SVC_UUID = 'f4362f74-f125-4b8c-a555-42fde91203f1';
+
+const CHAR = {
+  AUTH_KEY:      'a26bab4b-3238-4511-9bd5-293febd3274b', // on AUTH_SVC
+  AUTH_PASSWORD: '55a89408-00bb-4e9c-9e5b-155b2156c129', // on AUTH_SVC
+  CMD:           '39104664-f623-4013-b30e-3582d38c8d58', // on CTRL_SVC
+  SSID:          'd136da11-453b-4656-a196-9cec9f5b5f89', // on SETUP_SVC
+  SECURITY:      '2ef94ba9-227a-4156-b38b-c109c1e7a653',
+  PASSWORD:      'f5ec9b77-61c7-4fb7-9b94-8746125136e0',
+  IP:            '05108078-5744-41fe-b6f6-b4ff0ac81df3',
+  MASK:          'a5cdd3fa-f0ef-49dc-b5f7-cc8f976b6813',
+  GATEWAY:       '62f868d0-68ee-43ab-9f28-b7b107549949',
+  DHCP:          '12bd5335-c020-4455-aa73-9878186ced66',
+  DNS:           'c20574af-7a10-491d-a01d-81e09b7bba38',
+  TIMESTAMP:     'b729606e-109f-45a1-9d8b-08320e5b70d4',
+  CURRENT_IP:    '7b52fcf6-1c4f-11ea-978f-2e728ce88125',
+  NAME:          'ec88d8be-f5cf-4f82-9512-17ff2e0c764a',
+  ORIENTATION:   '408ef95a-2758-4ce9-b68c-b83106b4966f',
+};
+
+const ALL_SERVICES = [AUTH_SVC_UUID, CTRL_SVC_UUID, SETUP_SVC_UUID, STATE_SVC_UUID, 0x1800, 0x1801];
+
+let device = null;
+let server = null;
+let servicesCache = {};
+let authenticated = false;
+
+const $ = (id) => document.getElementById(id);
+const logEl = $('log');
+
+function log(msg, kind) {
+  const line = document.createElement('div');
+  line.className = kind ? 'l-' + kind : '';
+  line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  logEl.appendChild(line);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function strToBytes(str) {
+  return new TextEncoder().encode(str);
+}
+function bytesToStr(buffer) {
+  return new TextDecoder().decode(buffer);
+}
+
+function setConnStatus(text, kind) {
+  $('connStatus').textContent = text;
+  $('connStatus').className = 'status' + (kind ? ' ' + kind : '');
+}
+function setAuthStatus(text, kind) {
+  $('authStatus').textContent = text;
+  $('authStatus').className = 'status' + (kind ? ' ' + kind : '');
+}
+function setSectionEnabled(id, enabled) {
+  $(id).classList.toggle('disabled', !enabled);
+}
+
+async function getService(uuid) {
+  if (servicesCache[uuid]) return servicesCache[uuid];
+  const svc = await server.getPrimaryService(uuid);
+  servicesCache[uuid] = svc;
+  return svc;
+}
+
+async function writeStr(serviceUuid, charUuid, str) {
+  const svc = await getService(serviceUuid);
+  const ch = await svc.getCharacteristic(charUuid);
+  await ch.writeValueWithResponse(strToBytes(str));
+}
+
+async function readStr(serviceUuid, charUuid) {
+  const svc = await getService(serviceUuid);
+  const ch = await svc.getCharacteristic(charUuid);
+  const val = await ch.readValue();
+  return bytesToStr(val.buffer);
+}
+
+// ---- Connection ----
+$('connectBtn').addEventListener('click', async () => {
+  try {
+    setConnStatus('requesting device…');
+    device = await navigator.bluetooth.requestDevice({
+      filters: [{ services: [ADV_SVR_UUID] }, { namePrefix: 'CSE' }],
+      optionalServices: ALL_SERVICES
+    });
+    device.addEventListener('gattserverdisconnected', onDisconnected);
+
+    setConnStatus('connecting…');
+    server = await device.gatt.connect();
+    servicesCache = {};
+
+    setConnStatus('connected: ' + (device.name || device.id), 'on');
+    log(`Connected to ${device.name || device.id}`, 'ok');
+    $('connectBtn').disabled = true;
+    $('disconnectBtn').disabled = false;
+    $('authBtn').disabled = false;
+  } catch (err) {
+    setConnStatus('error: ' + err.message, 'err');
+    log('Connect failed: ' + err.message, 'err');
+  }
+});
+
+$('disconnectBtn').addEventListener('click', () => {
+  if (device && device.gatt.connected) device.gatt.disconnect();
+});
+
+function onDisconnected() {
+  setConnStatus('disconnected');
+  setAuthStatus('not authenticated');
+  authenticated = false;
+  $('connectBtn').disabled = false;
+  $('disconnectBtn').disabled = true;
+  $('authBtn').disabled = true;
+  setSectionEnabled('controlSection', false);
+  setSectionEnabled('wifiSection', false);
+  setSectionEnabled('deviceSection', false);
+  setSectionEnabled('passwordSection', false);
+  log('Disconnected', 'info');
+}
+
+// ---- Auth ----
+$('authBtn').addEventListener('click', async () => {
+  const pw = $('authPassword').value;
+  $('authBtn').disabled = true;
+  try {
+    log(`Writing auth key (password length ${pw.length})…`);
+    await writeStr(AUTH_SVC_UUID, CHAR.AUTH_KEY, pw);
+    await new Promise(r => setTimeout(r, 400)); // let the device settle before reading back
+    const result = await readStr(AUTH_SVC_UUID, CHAR.AUTH_KEY);
+    log(`Auth key read back: "${result}"`, 'info');
+    if (result.toLowerCase() === 'false') {
+      authenticated = false;
+      setAuthStatus('authentication failed', 'err');
+      log('Authentication failed — wrong password', 'err');
+    } else {
+      authenticated = true;
+      setAuthStatus('authenticated', 'on');
+      log('Authenticated successfully', 'ok');
+      setSectionEnabled('controlSection', true);
+      setSectionEnabled('wifiSection', true);
+      setSectionEnabled('deviceSection', true);
+      setSectionEnabled('passwordSection', true);
+    }
+  } catch (err) {
+    setAuthStatus('error: ' + err.message, 'err');
+    log('Auth error: ' + err.message, 'err');
+  } finally {
+    $('authBtn').disabled = false;
+  }
+});
+
+// ---- Status ----
+$('statusBtn').addEventListener('click', async () => {
+  try {
+    log('Requesting status…');
+    await writeStr(CTRL_SVC_UUID, CHAR.CMD, '0');
+    const ip = await readStr(SETUP_SVC_UUID, CHAR.CURRENT_IP);
+    const clean = ip.replace(/'/g, '');
+    $('statusResult').textContent = 'Current IP: ' + clean;
+    $('statusResult').className = 'status on';
+    log('Current IP: ' + clean, 'ok');
+  } catch (err) {
+    $('statusResult').textContent = 'error: ' + err.message;
+    $('statusResult').className = 'status err';
+    log('Status check failed: ' + err.message, 'err');
+  }
+});
+
+// ---- WiFi config ----
+async function applyWifiConfig(includeOrientation) {
+  const ssid = $('wifiSsid').value;
+  const pw = $('wifiPassword').value;
+  const security = $('wifiSecurity').value;
+  const dhcp = $('wifiDhcp').checked;
+  const ip = $('wifiIp').value;
+  const mask = $('wifiMask').value;
+  const gw = $('wifiGw').value;
+  const dns = $('wifiDns').value;
+
+  if (!ssid) throw new Error('SSID is required');
+
+  await writeStr(CTRL_SVC_UUID, CHAR.CMD, '0');
+  await writeStr(SETUP_SVC_UUID, CHAR.SSID, `'${ssid}'`);
+  await writeStr(SETUP_SVC_UUID, CHAR.PASSWORD, `"${pw}"`);
+  await writeStr(SETUP_SVC_UUID, CHAR.SECURITY, security);
+  await writeStr(SETUP_SVC_UUID, CHAR.DHCP, dhcp ? '1' : '0');
+  await writeStr(SETUP_SVC_UUID, CHAR.DNS, dns);
+  await writeStr(SETUP_SVC_UUID, CHAR.MASK, mask);
+  await writeStr(SETUP_SVC_UUID, CHAR.GATEWAY, gw);
+  await writeStr(SETUP_SVC_UUID, CHAR.IP, ip);
+  await writeStr(SETUP_SVC_UUID, CHAR.TIMESTAMP, String(Date.now()));
+  await writeStr(CTRL_SVC_UUID, CHAR.CMD, '2'); // commit
+
+  // Orientation is NEVER written on its own in the official app — it's only ever
+  // sent as the tail end of a full WiFi submission, right after the commit above.
+  // Writing it in isolation appears to crash the handle's display service.
+  if (includeOrientation) {
+    await writeStr(SETUP_SVC_UUID, CHAR.ORIENTATION, $('deviceOrientation').value);
+  }
+}
+
+$('wifiApplyBtn').addEventListener('click', async () => {
+  try {
+    log(`Applying WiFi config for SSID "${$('wifiSsid').value}"…`);
+    await applyWifiConfig($('applyOrientationCheck').checked);
+    log('WiFi settings written and committed', 'ok');
+  } catch (err) {
+    log('WiFi config failed: ' + err.message, 'err');
+  }
+});
+
+// ---- Device: rename / orientation / reboot ----
+$('renameBtn').addEventListener('click', async () => {
+  const name = $('deviceName').value;
+  if (!name) { log('Enter a name first', 'err'); return; }
+  try {
+    await writeStr(SETUP_SVC_UUID, CHAR.NAME, name);
+    log(`Renamed to "${name}"`, 'ok');
+  } catch (err) {
+    log('Rename failed: ' + err.message, 'err');
+  }
+});
+
+$('rebootBtn').addEventListener('click', async () => {
+  if (!confirm('Reboot the handle now?')) return;
+  try {
+    await writeStr(CTRL_SVC_UUID, CHAR.CMD, '3');
+    log('Reboot command sent', 'ok');
+  } catch (err) {
+    log('Reboot failed: ' + err.message, 'err');
+  }
+});
+
+// ---- Load current settings (reverse-engineered from the app's OVERRIDE command) ----
+$('loadSettingsBtn').addEventListener('click', async () => {
+  $('loadSettingsResult').textContent = 'loading…';
+  $('loadSettingsResult').className = 'status';
+  try {
+    log('Loading current settings from handle…');
+    await writeStr(CTRL_SVC_UUID, CHAR.CMD, '0');
+    await writeStr(CTRL_SVC_UUID, CHAR.CMD, '1');
+    await new Promise(r => setTimeout(r, 300));
+
+    const [ssid, security, password, dhcp, ip, mask, gateway, dns, name, orientation] =
+      await Promise.all([
+        readStr(SETUP_SVC_UUID, CHAR.SSID),
+        readStr(SETUP_SVC_UUID, CHAR.SECURITY),
+        readStr(SETUP_SVC_UUID, CHAR.PASSWORD),
+        readStr(SETUP_SVC_UUID, CHAR.DHCP),
+        readStr(SETUP_SVC_UUID, CHAR.IP),
+        readStr(SETUP_SVC_UUID, CHAR.MASK),
+        readStr(SETUP_SVC_UUID, CHAR.GATEWAY),
+        readStr(SETUP_SVC_UUID, CHAR.DNS),
+        readStr(SETUP_SVC_UUID, CHAR.NAME),
+        readStr(SETUP_SVC_UUID, CHAR.ORIENTATION),
+      ]);
+
+    // Match the app's own parsing exactly: SSID/current-IP strip single quotes,
+    // password strips double quotes, DHCP is "on" unless explicitly "0".
+    $('wifiSsid').value = ssid ? ssid.replace(/'/g, '') : '';
+    $('wifiSecurity').value = security ? String(Number(security)) : '2';
+    $('wifiPassword').value = password ? password.replace(/"/g, '') : '';
+    $('wifiDhcp').checked = !(dhcp === '0');
+    $('wifiIp').value = ip || '';
+    $('wifiMask').value = mask || '';
+    $('wifiGw').value = gateway || '';
+    $('wifiDns').value = dns || '';
+    $('deviceName').value = name || '';
+    if (['l','r'].includes(orientation)) $('deviceOrientation').value = orientation;
+
+    $('loadSettingsResult').textContent = 'Current settings loaded into form above';
+    $('loadSettingsResult').className = 'status on';
+    log('Current settings loaded', 'ok');
+  } catch (err) {
+    $('loadSettingsResult').textContent = 'error: ' + err.message;
+    $('loadSettingsResult').className = 'status err';
+    log('Load settings failed: ' + err.message, 'err');
+  }
+});
+
+// ---- Change authentication password (reverse-engineered from UPDATE_PASSWORD) ----
+$('changePasswordBtn').addEventListener('click', async () => {
+  const newPw = $('newPassword').value;
+  const confirmPw = $('confirmPassword').value;
+  if (!newPw) { log('Enter a new password', 'err'); return; }
+  if (newPw !== confirmPw) {
+    $('changePasswordResult').textContent = 'passwords do not match';
+    $('changePasswordResult').className = 'status err';
+    return;
+  }
+  if (!confirm('Change this handle\'s authentication password? Make sure you\'ve saved it somewhere — CSE does not retain custom passwords.')) return;
+
+  try {
+    log('Changing authentication password…');
+    await writeStr(CTRL_SVC_UUID, CHAR.CMD, '1');
+    await writeStr(AUTH_SVC_UUID, CHAR.AUTH_PASSWORD, newPw);
+    await writeStr(CTRL_SVC_UUID, CHAR.CMD, '0');
+    $('changePasswordResult').textContent = 'Password changed — use it next time you authenticate';
+    $('changePasswordResult').className = 'status on';
+    log('Password changed successfully', 'ok');
+    $('authPassword').value = newPw; // keep this session authenticated with the new password
+    $('newPassword').value = '';
+    $('confirmPassword').value = '';
+  } catch (err) {
+    $('changePasswordResult').textContent = 'error: ' + err.message;
+    $('changePasswordResult').className = 'status err';
+    log('Password change failed: ' + err.message, 'err');
+  }
+});
+
+// ---- Batch rollout: connect one handle at a time, auto-apply the saved WiFi template ----
+function addBatchRow(name, result, kind) {
+  const tbody = $('batchRows');
+  const tr = document.createElement('tr');
+  const time = new Date().toLocaleTimeString();
+  tr.innerHTML = `
+    <td style="padding:6px 8px; border-bottom:1px solid #1a2320;">${name}</td>
+    <td style="padding:6px 8px; border-bottom:1px solid #1a2320;" class="status ${kind || ''}">${result}</td>
+    <td style="padding:6px 8px; border-bottom:1px solid #1a2320;">${time}</td>`;
+  tbody.prepend(tr);
+}
+
+$('batchNextBtn').addEventListener('click', async () => {
+  const pw = $('authPassword').value;
+  const applyOrientation = $('batchOrientation').checked;
+  $('batchNextBtn').disabled = true;
+  $('batchStatus').textContent = 'requesting device…';
+  $('batchStatus').className = 'status';
+
+  let batchDevice = null;
+  let batchName = 'unknown';
+
+  try {
+    // Independent connection so this doesn't disturb the single-device
+    // session in sections 1-5 above, if one happens to be open.
+    batchDevice = await navigator.bluetooth.requestDevice({
+      filters: [{ services: [ADV_SVR_UUID] }, { namePrefix: 'CSE' }],
+      optionalServices: ALL_SERVICES
+    });
+    batchName = batchDevice.name || batchDevice.id;
+    $('batchStatus').textContent = `connecting to ${batchName}…`;
+
+    const batchServer = await batchDevice.gatt.connect();
+    const batchServicesCache = {};
+    const getSvc = async (uuid) => {
+      if (batchServicesCache[uuid]) return batchServicesCache[uuid];
+      const svc = await batchServer.getPrimaryService(uuid);
+      batchServicesCache[uuid] = svc;
+      return svc;
+    };
+    const write = async (svcUuid, charUuid, str) => {
+      const svc = await getSvc(svcUuid);
+      const ch = await svc.getCharacteristic(charUuid);
+      await ch.writeValueWithResponse(strToBytes(str));
+    };
+    const read = async (svcUuid, charUuid) => {
+      const svc = await getSvc(svcUuid);
+      const ch = await svc.getCharacteristic(charUuid);
+      const val = await ch.readValue();
+      return bytesToStr(val.buffer);
+    };
+
+    $('batchStatus').textContent = `authenticating ${batchName}…`;
+    await write(AUTH_SVC_UUID, CHAR.AUTH_KEY, pw);
+    await new Promise(r => setTimeout(r, 400));
+    const authResult = await read(AUTH_SVC_UUID, CHAR.AUTH_KEY);
+    if (authResult.toLowerCase() === 'false') {
+      throw new Error('authentication failed — check the password in section 1');
+    }
+
+    $('batchStatus').textContent = `applying WiFi settings to ${batchName}…`;
+    const ssid = $('wifiSsid').value;
+    if (!ssid) throw new Error('fill in SSID in section 3 first');
+    await write(CTRL_SVC_UUID, CHAR.CMD, '0');
+    await write(SETUP_SVC_UUID, CHAR.SSID, `'${ssid}'`);
+    await write(SETUP_SVC_UUID, CHAR.PASSWORD, `"${$('wifiPassword').value}"`);
+    await write(SETUP_SVC_UUID, CHAR.SECURITY, $('wifiSecurity').value);
+    await write(SETUP_SVC_UUID, CHAR.DHCP, $('wifiDhcp').checked ? '1' : '0');
+    await write(SETUP_SVC_UUID, CHAR.DNS, $('wifiDns').value);
+    await write(SETUP_SVC_UUID, CHAR.MASK, $('wifiMask').value);
+    await write(SETUP_SVC_UUID, CHAR.GATEWAY, $('wifiGw').value);
+    await write(SETUP_SVC_UUID, CHAR.IP, $('wifiIp').value);
+    await write(SETUP_SVC_UUID, CHAR.TIMESTAMP, String(Date.now()));
+    await write(CTRL_SVC_UUID, CHAR.CMD, '2'); // commit
+
+    if (applyOrientation) {
+      await write(SETUP_SVC_UUID, CHAR.ORIENTATION, $('deviceOrientation').value);
+    }
+
+    addBatchRow(batchName, 'configured', 'on');
+    $('batchStatus').textContent = `done — ${batchName} configured. Ready for next handle.`;
+    $('batchStatus').className = 'status on';
+    log(`Batch: configured ${batchName}`, 'ok');
+  } catch (err) {
+    addBatchRow(batchName, 'failed: ' + err.message, 'err');
+    $('batchStatus').textContent = 'error: ' + err.message;
+    $('batchStatus').className = 'status err';
+    log(`Batch: failed on ${batchName} — ${err.message}`, 'err');
+  } finally {
+    if (batchDevice && batchDevice.gatt.connected) {
+      batchDevice.gatt.disconnect();
+    }
+    $('batchNextBtn').disabled = false;
+  }
+});
+</script>
+
+</body>
+</html>
