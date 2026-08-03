@@ -149,6 +149,11 @@
 </head>
 <body>
 
+<div id="unsupportedBanner" style="display:none; background: var(--err-tint); border: 1px solid var(--err); color: #8a2e26; border-radius: 10px; padding: 14px 16px; margin-bottom: 20px; font-size: 13px; line-height: 1.5;">
+  <strong id="unsupportedTitle">This browser doesn't support Web Bluetooth.</strong>
+  <div id="unsupportedDetail" style="margin-top: 6px;"></div>
+</div>
+
 <h1>CSE Handle Control</h1>
 <div class="sub">Bluetooth configuration only — WiFi, authentication, rename, orientation, reboot. No media/image management.</div>
 
@@ -318,6 +323,42 @@ let authenticated = false;
 
 const $ = (id) => document.getElementById(id);
 const logEl = $('log');
+
+// ---- Web Bluetooth support check ----
+(function checkBluetoothSupport() {
+  const banner = $('unsupportedBanner');
+  const title = $('unsupportedTitle');
+  const detail = $('unsupportedDetail');
+
+  if (!navigator.bluetooth) {
+    banner.style.display = 'block';
+    const ua = navigator.userAgent;
+    const isIOS = /iPad|iPhone|iPod/.test(ua);
+    const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+    const isFirefox = /firefox/i.test(ua);
+
+    if (isIOS) {
+      title.textContent = "Web Bluetooth isn't available on iOS.";
+      detail.textContent = "Apple blocks Web Bluetooth in every browser on iPhone/iPad, including Chrome and Edge for iOS — it's a platform restriction, not something a specific app can work around. Use a Mac, Windows PC, or Android device instead.";
+    } else if (isFirefox) {
+      title.textContent = "Firefox doesn't support Web Bluetooth.";
+      detail.textContent = "Please open this page in Chrome or Edge instead.";
+    } else if (isSafari) {
+      title.textContent = "Safari doesn't support Web Bluetooth.";
+      detail.textContent = "Please open this page in Chrome or Edge instead — on the same Mac, that's enough, no other changes needed.";
+    } else if (!window.isSecureContext) {
+      title.textContent = "This page needs to be loaded securely for Bluetooth to work.";
+      detail.textContent = "Web Bluetooth requires https:// or a localhost address. If you're opening this as a local file, try running it from a local server instead.";
+    } else {
+      title.textContent = "This browser doesn't support Web Bluetooth.";
+      detail.textContent = "Please open this page in a recent version of Chrome or Edge on desktop or Android.";
+    }
+
+    $('connectBtn').disabled = true;
+    $('connectBtn').title = 'Web Bluetooth is not available in this browser';
+  }
+})();
+
 
 function log(msg, kind) {
   const line = document.createElement('div');
